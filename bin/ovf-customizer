@@ -4,39 +4,40 @@ from __future__ import print_function
 
 import sys
 
-import lxml.etree
+from xml.dom.minidom import parse, parseString
 
-ovf_in = lxml.etree.parse(sys.stdin)
+dom = parse(sys.stdin)
 
-root = ovf_in.getroot()
+namespaces = {
+  'ovf':    'http://schemas.dmtf.org/ovf/envelope/1',
+  'vcloud': 'http://www.vmware.com/vcloud/v1.5',
+}
 
-namespaces = {key: val for key, val in root.nsmap.items() if key is not None}
-namespaces['vcloud'] = 'http://www.vmware.com/vcloud/v1.5'
+root = dom.getElementsByTagName('Envelope')[0]
+root.setAttribute('xmlns:vcloud', namespaces['vcloud'])
 
 # Update the OperatingSystemSection tag osType to reflect ubuntu OS
-oss_tag = root.xpath('//ovf:OperatingSystemSection', namespaces=namespaces)[0]
-oss_tag.attrib['{%s}osType' % namespaces['ovf']] = 'ubuntu64Guest'
+oss_tag = dom.getElementsByTagName('OperatingSystemSection')[0]
+oss_tag.setAttribute('vmw:osType', 'ubuntu64Guest')
 
-# Set the VirtualSystemType (VMware HW version) to v8
-vst_tag = root.xpath('//vssd:VirtualSystemType', namespaces=namespaces)[0]
-vst_tag.text = 'vmx-08'
+# # Set the VirtualSystemType (VMware HW version) to v8
+vst_tag = dom.getElementsByTagName('vssd:VirtualSystemType')[0]
+vst_tag.firstChild.replaceWholeText('vmx-08')
 
 # Add the vCloud customization section at the end of the VirtualSystem tag
-vs_tag = root.xpath('//ovf:VirtualSystem', namespaces=namespaces)[0]
+vs_tag = dom.getElementsByTagName('VirtualSystem')[0]
 
 customization = """
-    <vcloud:CustomizationSection goldMaster="false" ovf:required="false"
-      xmlns="{ovf}"
-      xmlns:ovf="{ovf}"
-      xmlns:vcloud="{vcloud}">
+  <root xmlns:ovf="{ovf}" xmlns:vcloud="{vcloud}">
+    <vcloud:CustomizationSection goldMaster="false" ovf:required="false">
       <Info>VApp template customization section</Info>
       <vcloud:CustomizeOnInstantiate>true</vcloud:CustomizeOnInstantiate>
-    </vcloud:CustomizationSection>"""
+    </vcloud:CustomizationSection>
+  </root>
+"""
 guest_customization = """
-    <vcloud:GuestCustomizationSection ovf:required="false"
-      xmlns="{ovf}"
-      xmlns:ovf="{ovf}"
-      xmlns:vcloud="{vcloud}">
+  <root xmlns:ovf="{ovf}" xmlns:vcloud="{vcloud}">
+    <vcloud:GuestCustomizationSection ovf:required="false">
       <Info>Specifies Guest OS Customization Settings</Info>
       <vcloud:Enabled>true</vcloud:Enabled>
       <vcloud:ChangeSid>false</vcloud:ChangeSid>
@@ -48,12 +49,12 @@ guest_customization = """
       <!-- <vcloud:AdminPassword>tutu</vcloud:AdminPassword> -->
       <vcloud:ResetPasswordRequired>false</vcloud:ResetPasswordRequired>
       <vcloud:CustomizationScript></vcloud:CustomizationScript>
-    </vcloud:GuestCustomizationSection>"""
+    </vcloud:GuestCustomizationSection>
+  </root>
+"""
 network = """
-    <vcloud:NetworkConnectionSection ovf:required="false"
-      xmlns="{ovf}"
-      xmlns:ovf="{ovf}"
-      xmlns:vcloud="{vcloud}">
+  <root xmlns:ovf="{ovf}" xmlns:vcloud="{vcloud}">
+    <vcloud:NetworkConnectionSection ovf:required="false">
       <Info>The configuration parameters for logical networks</Info>
       <vcloud:PrimaryNetworkConnectionIndex>0</vcloud:PrimaryNetworkConnectionIndex>
       <vcloud:NetworkConnection network="nat" needsCustomization="true">
@@ -62,10 +63,19 @@ network = """
         <vcloud:MACAddress>00:01:02:03:04:05</vcloud:MACAddress>
         <vcloud:IpAddressAllocationMode>NONE</vcloud:IpAddressAllocationMode>
       </vcloud:NetworkConnection>
-    </vcloud:NetworkConnectionSection>"""
+    </vcloud:NetworkConnectionSection>
+  </root>
+"""
 
 for tag in (customization, guest_customization, network):
-    el = lxml.etree.XML(tag.format(**namespaces))
-    vs_tag.append(el)
+    # Parse each "sub" document.
+    sub_root = parseString(tag.format(**namespaces)).childNodes[0]
 
-print(lxml.etree.tostring(ovf_in))
+    # Remove "root" node of sub-doc; select all of it's children. It is
+    # only required for qualifying the namespaces used within the sub-doc.
+    # Without it minidom will fail to parse the string.
+    sub_nodes = sub_root.childNodes[1]
+
+    vs_tag.appendChild(sub_nodes)
+
+print(dom.toxml())
