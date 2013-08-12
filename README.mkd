@@ -5,28 +5,24 @@ multiple providers (e.g. VMWare ESX, Amazon EC2, KVM, etc.).
 
 ## Usage
 
-You will need to be on an Ubuntu machine (perhaps a VM) to successfully build an
-Ubuntu VM. You can get a VM with the [boxgrinder tools][bg] already installed
-[from S3](https://gds-boxes.s3.amazonaws.com/ubuntu-precise-boxgrinder-20130326.ova).
+Included is a Vagrant configuration for bringing up a "meta-appliance" that
+more-or-less mirrors the definition of `ubuntu-precise-boxgrinder.appl`.
+This will allow you to build subsequent appliances/templates.
 
-Boot the machine and login (either via SSH or at the console) as `root` with
-password `esicerp`.
+Bring it up and login as normal:
+
+    vagrant up
+    vagrant ssh
+
+Boxgrinder needs to be run as root and from a local filesystem with `exec`
+and `dev` mount options. So escalate privileges and change into a new clone
+of the `boxgrinder-appliances` repo:
+
+    sudo -i
+    cd boxgrinder-appliances
 
 You should now be able to build a VM by calling the appropriate `make` task:
 
-    cd boxgrinder-appliances
     make ubuntu-precise
 
 The resulting built VMs will be in the `build/` directory.
-
-## Bootstrapping
-
-If you cannot use the meta-appliance linked above, you should be able to use any
-Ubuntu Precise box. Consult the package list in `ubuntu-precise-boxgrinder.appl`
-and ensure that all the relevant packages are installed on your machine. Then
-review and, as root, run the postinstall script for the boxgrinder
-meta-appliance:
-
-[bg]: http://boxgrinder.org/
-
-    sh script/postinstall-boxgrinder.sh
