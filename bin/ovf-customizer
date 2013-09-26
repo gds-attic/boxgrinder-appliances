@@ -26,13 +26,20 @@ vst_tag.firstChild.replaceWholeText('vmx-08')
 
 # Change network name to Default.
 net_name = 'Default'
+net_description = 'The Default network'
+conn_description = 'PCNet32 ethernet adapter on "Default"'
 
 net_tag = dom.getElementsByTagName('NetworkSection')[0]
 net_tag = net_tag.getElementsByTagName('Network')[0]
 net_tag.setAttribute('ovf:name', net_name)
+description_tag = net_tag.getElementsByTagName('Description')[0]
+description_tag.firstChild.replaceWholeText(net_description)
 
 conn_tag = dom.getElementsByTagName('rasd:Connection')[0]
 conn_tag.firstChild.replaceWholeText(net_name)
+item_tag = conn_tag.parentNode
+description_tag = item_tag.getElementsByTagName('rasd:Description')[0]
+description_tag.firstChild.replaceWholeText(conn_description)
 
 # Add the vCloud customization section at the end of the VirtualSystem tag
 vs_tag = dom.getElementsByTagName('VirtualSystem')[0]

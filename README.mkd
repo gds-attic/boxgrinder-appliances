@@ -26,3 +26,23 @@ You should now be able to build a VM by calling the appropriate `make` task:
     make ubuntu-precise
 
 The resulting built VMs will be in the `build/` directory.
+
+If you make changes you will need to delete the build directory - or just
+
+    make clean
+
+Sometimes it hangs for a very long time. You might find that destroying the VM
+and starting again is quicker.
+
+## Testing
+
+To test it against Skyscape to check the XML is valid, etc, do the following:
+
+    VM_NAME="ubuntu-precise-$(date +%Y%m%d%H%M)-$(git rev-parse --short HEAD)";
+
+    ovftool -n=$VM_NAME --vCloudTemplate \
+    build/appliances/x86_64/ubuntu/precise/ubuntu-precise/1.0/vmware-plugin/ubuntu-precise.ova \
+    "vcloud://${USER_ID}@api.vcd.portal.skyscapecloud.com/?org=${ORG_ID}&vdc=${FRIENDLY_ORG_NAME}&catalog=Default&vappTemplate=${VM_NAME}"
+
+You'll need to set `USER_ID`, `ORG_ID` and `FRIENDLY_ORG_NAME` (the latter can
+be found on the Administration tab in vCloud Director; use `%20` for spaces).
